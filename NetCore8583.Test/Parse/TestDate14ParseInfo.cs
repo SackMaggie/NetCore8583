@@ -41,6 +41,14 @@ namespace NetCore8583.Test.Parse
     {
         private static sbyte[] Ascii(string s) => s.GetSignedBytes(Encoding.ASCII);
 
+        private static Encoding ResolveEncoding(string name) => name switch
+        {
+            "ASCII" => Encoding.ASCII,
+            "UTF-8" => Encoding.UTF8,
+            "IBM037" => CodePagesEncodingProvider.Instance.GetEncoding(37),
+            _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
+        };
+
         // ═══════════════════════════════════════════════════════════════════════
         // Parse (ASCII)
         // ═══════════════════════════════════════════════════════════════════════
@@ -62,15 +70,22 @@ namespace NetCore8583.Test.Parse
         }
 
         /// <summary>
-        /// "20260316143000" → 2026-03-16 14:30:00, decoded via the string-conversion branch.
+        /// "20260316143000" → 2026-03-16 14:30:00, decoded via the string-conversion branch, under
+        /// every <see cref="FieldParseInfo.Encoding"/> this branch can be configured with.
         /// Regression test: same bug pattern as <see cref="Date12ParseInfo"/> -- every field past
-        /// <c>year</c> used to read the wrong substring.
+        /// <c>year</c> used to read the wrong substring -- exercised across encodings because each
+        /// field read goes through <c>buf.ToString(pos, len, Encoding)</c>, so a fix that only
+        /// happened to work for single-byte ASCII would not be proven correct.
         /// </summary>
-        [Fact]
-        public void Parse_ForceStringDecoding_ReturnsCorrectDateTime()
+        [Theory]
+        [InlineData("ASCII")]
+        [InlineData("UTF-8")]
+        [InlineData("IBM037")]
+        public void Parse_ForceStringDecoding_ReturnsCorrectDateTime(string encodingName)
         {
-            var fpi = new Date14ParseInfo { ForceStringDecoding = true };
-            var val = fpi.Parse(1, Ascii("20260316143000"), 0, null);
+            var encoding = ResolveEncoding(encodingName);
+            var fpi = new Date14ParseInfo { ForceStringDecoding = true, Encoding = encoding };
+            var val = fpi.Parse(1, "20260316143000".GetSignedBytes(encoding), 0, null);
             var dt = (DateTime) val.Value;
             Assert.Equal(2026, dt.Year);
             Assert.Equal(3, dt.Month);
