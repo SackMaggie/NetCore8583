@@ -142,6 +142,9 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(2026, dt.Year);
             Assert.Equal(3, dt.Month);
             Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
         }
 
         [Fact]
@@ -231,6 +234,9 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(2026, dt.Year);
             Assert.Equal(3, dt.Month);
             Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
         }
 
         [Fact]
