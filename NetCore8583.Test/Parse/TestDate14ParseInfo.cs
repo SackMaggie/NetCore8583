@@ -61,6 +61,25 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(0, dt.Second);
         }
 
+        /// <summary>
+        /// "20260316143000" → 2026-03-16 14:30:00, decoded via the string-conversion branch.
+        /// Regression test: same bug pattern as <see cref="Date12ParseInfo"/> -- every field past
+        /// <c>year</c> used to read the wrong substring.
+        /// </summary>
+        [Fact]
+        public void Parse_ForceStringDecoding_ReturnsCorrectDateTime()
+        {
+            var fpi = new Date14ParseInfo { ForceStringDecoding = true };
+            var val = fpi.Parse(1, Ascii("20260316143000"), 0, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(2026, dt.Year);
+            Assert.Equal(3, dt.Month);
+            Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
+        }
+
         [Fact]
         public void Parse_EndOfMillennium()
         {

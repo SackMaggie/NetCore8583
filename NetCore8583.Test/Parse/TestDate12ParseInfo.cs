@@ -98,6 +98,40 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(1951, dt.Year);
         }
 
+        /// <summary>
+        /// "260316143000" → 2026-03-16 14:30:00, decoded via the string-conversion branch.
+        /// Regression test: every field past <c>year</c> used to read the wrong substring
+        /// (month re-read year's own digits, day re-read month's slot, etc.).
+        /// </summary>
+        [Fact]
+        public void Parse_ForceStringDecoding_ReturnsCorrectDateTime()
+        {
+            var fpi = new Date12ParseInfo { ForceStringDecoding = true };
+            var val = fpi.Parse(1, Ascii("260316143000"), 0, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(2026, dt.Year);
+            Assert.Equal(3, dt.Month);
+            Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
+        }
+
+        [Fact]
+        public void Parse_ForceStringDecoding_WithOffset_ReturnsCorrectDateTime()
+        {
+            var fpi = new Date12ParseInfo { ForceStringDecoding = true };
+            var buf = Ascii("XXXX260316143000");
+            var val = fpi.Parse(1, buf, 4, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(2026, dt.Year);
+            Assert.Equal(3, dt.Month);
+            Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
+        }
+
         [Fact]
         public void Parse_WithOffset()
         {
