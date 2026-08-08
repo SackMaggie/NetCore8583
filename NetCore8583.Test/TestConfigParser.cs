@@ -300,5 +300,49 @@ namespace NetCore8583.Test
                 Assert.NotNull(fpi);
             }
         }
+
+        /// <summary>
+        /// <see cref="MessageFactory{T}.SetConfigPath"/> re-applies <c>Encoding</c> after
+        /// <c>ConfigParser</c> builds every field, specifically so setting <c>Encoding</c> before or
+        /// after loading config produces the same result. Both orders are exercised here so an edit
+        /// to that re-application can't silently break either one: a message is packed and re-parsed
+        /// on the same factory, and the packed bytes are checked directly against the target
+        /// encoding's own byte values (not just against ASCII/UTF-8, which agree with most encodings
+        /// on plain Latin text and so would not by themselves prove anything was actually applied).
+        /// </summary>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void Encoding_SurvivesRegardlessOfSetConfigPathOrder(bool setEncodingBeforeConfig)
+        {
+            var encoding = CodePagesEncodingProvider.Instance.GetEncoding(37); // IBM037 (EBCDIC)
+            // ForceStringEncoding is required alongside Encoding here: MessageFactory's own MTI
+            // decode (below ForceStringEncoding's ParseMessage branch) otherwise falls back to
+            // hardcoded ASCII byte arithmetic (`buf[i] - 48`) regardless of Encoding -- the exact
+            // same "byte math assumes ASCII" pattern this fork's Date12/14ParseInfo fix addressed,
+            // just one level up. Mirrors how the mapper repo that vendors this fork always sets both
+            // together for its own EBCDIC wire config.
+            var mfact = new MessageFactory<IsoMessage> { AssignDate = true, ForceStringEncoding = true };
+
+            if (setEncodingBeforeConfig) mfact.Encoding = encoding;
+            mfact.SetConfigPath(@"/Resources/config.xml");
+            if (!setEncodingBeforeConfig) mfact.Encoding = encoding;
+
+            // Field 43 (ALPHA, length 40) is declared in config.xml's "0600" template and parse guide.
+            var packed = mfact.NewMessage(0x600).WriteData();
+
+            // Prove the template/pack side actually used IBM037 -- not a default encoding that
+            // happened to still be sitting on the field.
+            var packedHex = HexCodec.HexEncode(packed, 0, packed.Length);
+            var ebcdicHex = HexCodec.HexEncode("length 40".GetSignedBytes(encoding), 0, 9);
+            var asciiHex = HexCodec.HexEncode("length 40".GetSignedBytes(Encoding.ASCII), 0, 9);
+            Assert.Contains(ebcdicHex, packedHex);
+            Assert.DoesNotContain(asciiHex, packedHex);
+
+            // Prove the ParseMap/parse side used the same encoding: decoding these IBM037 bytes with
+            // a leftover default encoding would not recover the original text.
+            var reparsed = mfact.ParseMessage(packed, 0);
+            Assert.Contains("length 40", (string) reparsed.GetObjectValue(43));
+        }
     }
 }

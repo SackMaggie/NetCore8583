@@ -41,6 +41,14 @@ namespace NetCore8583.Test.Parse
     {
         private static sbyte[] Ascii(string s) => s.GetSignedBytes(Encoding.ASCII);
 
+        private static Encoding ResolveEncoding(string name) => name switch
+        {
+            "ASCII" => Encoding.ASCII,
+            "UTF-8" => Encoding.UTF8,
+            "IBM037" => CodePagesEncodingProvider.Instance.GetEncoding(37),
+            _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
+        };
+
         // ═══════════════════════════════════════════════════════════════════════
         // Parse (ASCII)
         // ═══════════════════════════════════════════════════════════════════════
@@ -98,6 +106,47 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(1951, dt.Year);
         }
 
+        /// <summary>
+        /// "260316143000" → 2026-03-16 14:30:00, decoded via the string-conversion branch, under
+        /// every <see cref="FieldParseInfo.Encoding"/> this branch can be configured with.
+        /// Regression test: every field past <c>year</c> used to read the wrong substring
+        /// (month re-read year's own digits, day re-read month's slot, etc.) -- exercised across
+        /// encodings because each field read goes through <c>buf.ToString(pos, len, Encoding)</c>,
+        /// so a fix that only happened to work for single-byte ASCII would not be proven correct.
+        /// </summary>
+        [Theory]
+        [InlineData("ASCII")]
+        [InlineData("UTF-8")]
+        [InlineData("IBM037")]
+        public void Parse_ForceStringDecoding_ReturnsCorrectDateTime(string encodingName)
+        {
+            var encoding = ResolveEncoding(encodingName);
+            var fpi = new Date12ParseInfo { ForceStringDecoding = true, Encoding = encoding };
+            var val = fpi.Parse(1, "260316143000".GetSignedBytes(encoding), 0, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(2026, dt.Year);
+            Assert.Equal(3, dt.Month);
+            Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
+        }
+
+        [Fact]
+        public void Parse_ForceStringDecoding_WithOffset_ReturnsCorrectDateTime()
+        {
+            var fpi = new Date12ParseInfo { ForceStringDecoding = true };
+            var buf = Ascii("XXXX260316143000");
+            var val = fpi.Parse(1, buf, 4, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(2026, dt.Year);
+            Assert.Equal(3, dt.Month);
+            Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
+        }
+
         [Fact]
         public void Parse_WithOffset()
         {
@@ -108,6 +157,9 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(2026, dt.Year);
             Assert.Equal(3, dt.Month);
             Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
         }
 
         [Fact]
@@ -197,6 +249,9 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(2026, dt.Year);
             Assert.Equal(3, dt.Month);
             Assert.Equal(16, dt.Day);
+            Assert.Equal(14, dt.Hour);
+            Assert.Equal(30, dt.Minute);
+            Assert.Equal(0, dt.Second);
         }
 
         [Fact]
