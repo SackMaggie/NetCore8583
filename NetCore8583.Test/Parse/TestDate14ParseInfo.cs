@@ -95,6 +95,26 @@ namespace NetCore8583.Test.Parse
             Assert.Equal(59, dt.Second);
         }
 
+        /// <summary>
+        /// "19991231235959" → 1999-12-31 23:59:59, decoded via the string-conversion branch.
+        /// Every field is at or near its maximum digit value -- the sharpest edge case for an
+        /// off-by-one-field-width read, since a wrong offset here reads plausible-looking but
+        /// wrong two-digit values instead of obviously out-of-range ones.
+        /// </summary>
+        [Fact]
+        public void Parse_ForceStringDecoding_EndOfMillennium()
+        {
+            var fpi = new Date14ParseInfo { ForceStringDecoding = true };
+            var val = fpi.Parse(1, Ascii("19991231235959"), 0, null);
+            var dt = (DateTime) val.Value;
+            Assert.Equal(1999, dt.Year);
+            Assert.Equal(12, dt.Month);
+            Assert.Equal(31, dt.Day);
+            Assert.Equal(23, dt.Hour);
+            Assert.Equal(59, dt.Minute);
+            Assert.Equal(59, dt.Second);
+        }
+
         [Fact]
         public void Parse_StartOfYear()
         {
