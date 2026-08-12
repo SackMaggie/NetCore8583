@@ -40,19 +40,27 @@ namespace NetCore8583.Tracer
             value = initialValue - 1;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Best-effort snapshot of the most recently issued trace number. Not synchronized
+        ///     with <see cref="NextTrace"/>'s lock: under concurrent callers there is no single
+        ///     "last" value to linearize against, so this reads the field directly. The field
+        ///     stays <c>volatile</c> so that read observes the latest write promptly instead of
+        ///     a stale, per-core cached value.
+        /// </summary>
         public int LastTrace => value;
 
         /// <inheritdoc />
         public int NextTrace()
         {
+            int captured;
             lock (mutex)
             {
                 value++;
                 if (value > 999999) value = 1;
+                captured = value;
             }
 
-            return value;
+            return captured;
         }
     }
 }
