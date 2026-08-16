@@ -118,7 +118,11 @@ namespace NetCore8583
     ///   method can return the contained objects directly.
     /// </summary>
     /// <param name="field">The field number (2 to 128)</param>
-    /// <returns>The stored object value in that field, or null if the message does not have the field.</returns>
+    /// <returns>The stored object value in that field.</returns>
+    /// <exception cref="NullReferenceException">
+    ///   The message does not have that field. Call <see cref="HasField" /> first, or use
+    ///   <see cref="GetField" />, which returns null for an absent field.
+    /// </exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public object GetObjectValue(int field)
     {
